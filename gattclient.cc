@@ -18,8 +18,10 @@ void GattClient::ScanCfm(const uint32_t& gattId, const uint16_t& resultCode, con
 		std::cerr << "Scan start/stop failed. Error code " << resultCode << ", supplier " << resultSupplier << std::endl;
 		this->UnregisterReq(this->getGattId());
 	}
-	else
+	else {
+		std::cout << "ScanCfm passed.\n";
 		dispatcher.leave(false);
+	}
 }
 
 void GattClient::RegisterCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint16_t& context) {
@@ -43,13 +45,13 @@ void GattClient::UnregisterCfm(const uint32_t& gattId, const uint16_t& resultCod
 
 void GattClient::ReportInd(const uint32_t& gattId, const uint8_t& eventType, const std::string& address, const std::string& permanentAddress, const std::vector< uint8_t >& data, const int16_t& rssi) {
 	if (!data.empty()) {
-		std::cout << address  << ": Got report. RSSI: " << rssi << ". Connecting...\n";
+		std::cout << "\033[035m" << gattId << "\033[037m" << " found " << address  << ": Got report. RSSI: " << rssi << ". Connecting...\n";
 		this->CentralReq(gattId, address, 0, 0);
 	}
 }
 
 void GattClient::DiscoverServicesInd(const uint32_t& gattId, const uint32_t& btConnId, const uint16_t& startHandle, const uint16_t& endHandle, const std::vector< uint8_t >& uuid){
-	printf("%u: Discovered service ", btConnId); 
+	printf("\033[032m%u\033[37m: Discovered service ", btConnId); 
 	for (std::vector< uint8_t >::const_iterator i=uuid.begin(); i != uuid.end(); i++) printf("%.2x", *i);
 	if (std::equal(health_thermometer_uuid, health_thermometer_uuid+16, uuid.begin())) {
 		printf(" The service is Health thermometer service.");
@@ -63,7 +65,8 @@ void GattClient::DiscoverServicesInd(const uint32_t& gattId, const uint32_t& btC
 }
 	
 void GattClient::DiscoverServicesCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint32_t& btConnId) {
-	std::cout << btConnId << ": Services discovered. ";
+	std::cout << "\033[32m" << btConnId << "\033[37m"; 
+	std::cout << ": Services discovered. ";
 	bool disconnect = true;
 	if (resultCode == BT_GATT_RESULT_SUCCESS || resultCode == BT_GATT_RESULT_CANCELLED) {
 		std::map<uint32_t, DiscoveredService>::const_iterator service = this->health_thermometer_service.find(btConnId);	
@@ -83,7 +86,7 @@ void GattClient::CentralCfm(const uint32_t& gattId, const uint32_t& btConnId, co
 } 
 
 void GattClient::ConnectInd(const uint32_t& gattId, const uint32_t& btConnId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint32_t& connInfo, const std::string& address, const uint16_t& mtu) {
-	std::cout << btConnId; 
+	std::cout << "\033[32m" << btConnId << "\033[37m"; 
 	if (resultCode == 0) {
 		std::cout << ": Connected to " << address  << ". Discovering all primary services...\n";
 		this->DiscoverAllPrimaryServicesReq(gattId, btConnId);
@@ -93,12 +96,15 @@ void GattClient::ConnectInd(const uint32_t& gattId, const uint32_t& btConnId, co
 }
 
 void GattClient::DisconnectInd(const uint32_t& gattId, const uint32_t& btConnId, const uint16_t& reasonCode, const uint16_t& reasonSupplier, const std::string& address, const uint32_t& connInfo) {
-	std::cout << btConnId << ": Disconnected\n";
+	std::cout << "\033[32m" << btConnId << "\033[37m"; 
+	std::cout << ": Disconnected\n";
 	this->health_thermometer_service.erase(btConnId);
 }
 
 void GattClient::DiscoverCharacInd(const uint32_t& gattId, const uint32_t& btConnId, const uint16_t& declarationHandle, const uint8_t& property, const std::vector< uint8_t >& uuid, const uint16_t& valueHandle) {
-	printf("%u: Discovered characteristic with UUID ", btConnId);
+	std::cout << "\033[32m" << btConnId << "\033[37m"; 
+	std::cout << ": Discovered characteristic with UUID\n";
+	//printf("%u: Discovered characteristic with UUID ", btConnId);
 	for (std::vector< uint8_t >::const_iterator i=uuid.begin(); i != uuid.end(); i++) printf("%.2x", *i);
 	printf(".");
 	if (std::equal(temperature_measurement_uuid, temperature_measurement_uuid+16, uuid.begin())) {
@@ -112,7 +118,8 @@ void GattClient::DiscoverCharacInd(const uint32_t& gattId, const uint32_t& btCon
 }
 	
 void GattClient::DiscoverCharacCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint32_t& btConnId) {
-	std::cout << btConnId << ": Service characteristics discovered. ";
+	std::cout << "\033[32m" << btConnId << "\033[37m"; 
+	std::cout << ": Service characteristics discovered. ";
 	if ( resultCode == BT_GATT_RESULT_SUCCESS || resultCode == BT_GATT_RESULT_CANCELLED) {
 		std::cout << "Discovering characteristic descriptors...\n";
 		this->DiscoverAllCharacDescriptorsReq(
@@ -170,6 +177,20 @@ void  GattClient::WriteCfm(const uint32_t& gattId, const uint16_t& resultCode, c
 	else {
 		std::cout << btConnId << ": Waiting indications...\n";
 	}
+}
+
+void  GattClient::ReadCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint32_t& btConnId, const std::vector< uint8_t >& value ) {
+	/*
+	if (resultCode != BT_GATT_RESULT_SUCCESS) {
+		std::cout << btConnId << ": Reading client characteristic failed: " << resultCode << ", " << resultSupplier << std::endl;
+		this->DisconnectReq(gattId, btConnId);
+	}
+	else {
+		std::cout << btConnId << ": " << " Data: ";
+		for (std::vector< uint8_t >::const_iterator i=value.begin(); i != value.end(); i++) printf("%.2x", *i);
+		std::cout << std::endl;
+	}
+	*/
 }
 
 void GattClient::NotificationInd(const uint32_t& gattId, const uint32_t& btConnId, const std::string& address, const uint16_t& valueHandle, const std::vector< uint8_t >& value, const uint32_t& connInfo) {

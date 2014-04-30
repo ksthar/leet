@@ -563,6 +563,9 @@ glue/gatt_proxy-glue.h: ${XMLDIR}/gatt.xml
         -DINC_DiscoverCharacDescriptorsInd \
         -DINC_DiscoverCharacDescriptorsCfm \
         -DINC_WriteClientConfigurationReq \
+        -DINC_ReadReq \
+        -DINC_ReadCfm \
+        -DINC_WriteReq \
         -DINC_WriteCfm \
         -DINC_NotificationInd \
         -DINC_CancelReq \

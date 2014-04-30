@@ -34,6 +34,7 @@ public:
         connect_signal(gatt_proxy, DiscoverCharacCfm, _DiscoverCharacCfm_stub);
         connect_signal(gatt_proxy, DiscoverCharacDescriptorsInd, _DiscoverCharacDescriptorsInd_stub);
         connect_signal(gatt_proxy, DiscoverCharacDescriptorsCfm, _DiscoverCharacDescriptorsCfm_stub);
+        connect_signal(gatt_proxy, ReadCfm, _ReadCfm_stub);
         connect_signal(gatt_proxy, WriteCfm, _WriteCfm_stub);
         connect_signal(gatt_proxy, NotificationInd, _NotificationInd_stub);
         connect_signal(gatt_proxy, ReportInd, _ReportInd_stub);
@@ -88,6 +89,33 @@ public:
 
         wi << gattId;
         call.member("UnregisterReq");
+        ::DBus::Message ret = invoke_method (call);
+    }
+
+    void ReadReq(const uint32_t& gattId, const uint32_t& btConnId, const uint16_t& handle, const uint16_t& offset)
+    {
+        ::DBus::CallMessage call;
+        ::DBus::MessageIter wi = call.writer();
+
+        wi << gattId;
+        wi << btConnId;
+        wi << handle;
+        wi << offset;
+        call.member("ReadReq");
+        ::DBus::Message ret = invoke_method (call);
+    }
+
+    void WriteReq(const uint32_t& gattId, const uint32_t& btConnId, const uint16_t& handle, const uint16_t& offset, const std::vector< uint8_t >& value)
+    {
+        ::DBus::CallMessage call;
+        ::DBus::MessageIter wi = call.writer();
+
+        wi << gattId;
+        wi << btConnId;
+        wi << handle;
+        wi << offset;
+        wi << value;
+        call.member("WriteReq");
         ::DBus::Message ret = invoke_method (call);
     }
 
@@ -191,6 +219,7 @@ public:
     virtual void DiscoverCharacCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint32_t& btConnId) = 0;
     virtual void DiscoverCharacDescriptorsInd(const uint32_t& gattId, const uint32_t& btConnId, const std::vector< uint8_t >& uuid, const uint16_t& descriptorHandle) = 0;
     virtual void DiscoverCharacDescriptorsCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint32_t& btConnId) = 0;
+    virtual void ReadCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint32_t& btConnId, const std::vector< uint8_t >& value) = 0;
     virtual void WriteCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint32_t& btConnId) = 0;
     virtual void NotificationInd(const uint32_t& gattId, const uint32_t& btConnId, const std::string& address, const uint16_t& valueHandle, const std::vector< uint8_t >& value, const uint32_t& connInfo) = 0;
     virtual void ReportInd(const uint32_t& gattId, const uint8_t& eventType, const std::string& address, const std::string& permanentAddress, const std::vector< uint8_t >& data, const int16_t& rssi) = 0;
@@ -378,6 +407,22 @@ private:
         uint32_t btConnId;
         ri >> btConnId;
         DiscoverCharacDescriptorsCfm(gattId, resultCode, resultSupplier, btConnId);
+    }
+    void _ReadCfm_stub(const ::DBus::SignalMessage &sig)
+    {
+        ::DBus::MessageIter ri = sig.reader();
+
+        uint32_t gattId;
+        ri >> gattId;
+        uint16_t resultCode;
+        ri >> resultCode;
+        uint16_t resultSupplier;
+        ri >> resultSupplier;
+        uint32_t btConnId;
+        ri >> btConnId;
+        std::vector< uint8_t > value;
+        ri >> value;
+        ReadCfm(gattId, resultCode, resultSupplier, btConnId, value);
     }
     void _WriteCfm_stub(const ::DBus::SignalMessage &sig)
     {
