@@ -21,7 +21,7 @@ int main() {
 	DBus::Connection conn = DBus::Connection::SystemBus();
 	GattClient gc(conn, "/bt/gatt", "com.bluegiga.v2.bt0");
 	
-	std::cout << "\033[34m" << "-------------< Hars Hacked leet App >-------------" << "\033[37m" << std::endl;
+	std::cout << "\033[36m" << "--------------------------< Hars Hacked leet App >--------------------------" << "\033[37m" << std::endl;
 
 	gc.RegisterReq(0);
 	dispatcher.enter();
@@ -42,6 +42,7 @@ int main() {
 		return 4;
 
 	std::cout << "Unregistering and leaving app...\n";
+	std::cout << "\033[36m" << "--------------------------<         BYE          >--------------------------" << "\033[37m" << std::endl;
 	gc.UnregisterReq(gc.getGattId());
 	dispatcher.enter();	 
 	return (gc.isRegistered() ? 5 : 0);
