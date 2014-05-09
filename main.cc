@@ -37,6 +37,8 @@ int main() {
 	if (!gc.isRegistered()) 
 		return 3;
 
+	// HAR NOTE: Need to stop scanning after a loop or two and process the results...
+	
 	std::cout << "Stopping scan... ";
 	if (!gc.startStopScan(false)) // stop scanning
 		return 4;

@@ -21,6 +21,17 @@ struct DiscoveredService {
 	Characteristic temperature_measurement_characteristic;
 };
 
+// create a struct to hold the addresses of the particle's 
+// important characteristics
+typedef struct Particle {
+	uint16_t passcode;
+	uint16_t opcode;
+	uint16_t operand;
+	uint16_t result;
+} particle;
+
+// create a map of particles keyed by the btConn (connection handle)
+typedef std::map< uint16_t, Particle, std::less< uint16_t > > particles;
 
 class GattClient: public gatt_proxy, public DBus::IntrospectableProxy, public DBus::ObjectProxy 
 {
