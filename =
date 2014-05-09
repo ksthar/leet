@@ -20,11 +20,8 @@ std::string targetUUID = "4c23efb61bc83590064e0100cd67f5cb";
 uint16_t myHandle;
 int8_t threshold = -120;
 
-// setup my characteristic maps
-passcodes_t passcodes;
-opcodes_t opcodes;
-operands_t operands;
-results_t results;
+// create a map to hold all particles found
+particles particleList;
 
 // Print a time stamp
 void PrintTime() {
@@ -83,20 +80,20 @@ void GattClient::ReportInd(const uint32_t& gattId, const uint8_t& eventType, con
 			sprintf( thresh, "%d", threshold );
 			std::string rssiMin( thresh );
 
-			std::cout << "\033[035m  " << gattId << "\033[037m" << " Found " << address << " " <<  rssi << " < " << rssiMin << std::endl;
+			std::cout << "\033[035m  " << gattId << "\033[037m" << " found " << address  <<  rssi << " < " << rssiMin << ". Connecting to device..." << std::endl;
 			this->CentralReq(gattId, address, 0, 0);
 		} /* if rssi */
 	} /* if !data.empty */
 }
 
 void GattClient::DiscoverServicesInd(const uint32_t& gattId, const uint32_t& btConnId, const uint16_t& startHandle, const uint16_t& endHandle, const std::vector< uint8_t >& uuid){
-	/*
+	//printf("\033[032m%u\033[37m: Discovered service ", btConnId); 
 	PrintTime();
+
 	std::cout << "\033[032m" << btConnId << "\033[37m: Discovered service, start: " << startHandle << ", end: " << endHandle << ", ID: ";  
 	std::cout << "\033[036m"; 
 
 	for (std::vector< uint8_t >::const_iterator i=uuid.begin(); i != uuid.end(); i++) printf("%.2x", *i);
-	*/
 
 	// handle this spectial case...must have been a demo
 	if (std::equal(health_thermometer_uuid, health_thermometer_uuid+16, uuid.begin())) {
@@ -106,23 +103,19 @@ void GattClient::DiscoverServicesInd(const uint32_t& gattId, const uint32_t& btC
 		this->health_thermometer_service[btConnId].start_handle = startHandle;
 		this->health_thermometer_service[btConnId].end_handle = endHandle;
 	}
-	//std::cout << "\033[037m" << std::endl; 
-	//fflush(stdout);
+	std::cout << "\033[037m" << std::endl; 
+	fflush(stdout);
 
 	// Now, let's find the characteristics...
-	/*
 	PrintTime();
 	std::cout << "\033[032m" << btConnId << "\033[37m:   Discovering characteristics for service with start: " << startHandle << std::endl;  
-	*/
 	this->DiscoverAllCharacOfAServiceReq( gattId, btConnId, startHandle, endHandle );
 }
 	
 void GattClient::DiscoverServicesCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint32_t& btConnId) {
-	/*
 	PrintTime();
 	std::cout << "\033[32m" << btConnId << "\033[37m"; 
 	std::cout << ":   Services discovered." << std::endl;
-	*/
 	bool disconnect = false;
 
 	if (resultCode == BT_GATT_RESULT_SUCCESS || resultCode == BT_GATT_RESULT_CANCELLED) {
@@ -147,6 +140,11 @@ void GattClient::CentralCfm(const uint32_t& gattId, const uint32_t& btConnId, co
 void GattClient::ConnectInd(const uint32_t& gattId, const uint32_t& btConnId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint32_t& connInfo, const std::string& address, const uint16_t& mtu) {
 	PrintTime();
 
+	// create a new entry in the list of all seen Particles
+	// start with an initialized particle struct
+	particle tempPart = { 0, 0, 0, 0 };
+	particleList.insert( particles::value_type( btConnId, tempPart ) );
+
 	std::cout << "\033[32m" << btConnId << "\033[37m"; 
 	if (resultCode == 0) {
 		std::cout << ": Connected to " << address  << ". Discovering all primary services...\n";
@@ -159,15 +157,14 @@ void GattClient::ConnectInd(const uint32_t& gattId, const uint32_t& btConnId, co
 void GattClient::DisconnectInd(const uint32_t& gattId, const uint32_t& btConnId, const uint16_t& reasonCode, const uint16_t& reasonSupplier, const std::string& address, const uint32_t& connInfo) {
 	PrintTime();
 	std::cout << "\033[32m" << btConnId << "\033[37m"; 
-	std::cout << ": Disconnected from " << address << " (" << btConnId << ")" << std::endl;
+	std::cout << ": Disconnected\n";
 	this->health_thermometer_service.erase(btConnId);
 }
 
 void GattClient::DiscoverCharacInd(const uint32_t& gattId, const uint32_t& btConnId, const uint16_t& declarationHandle, const uint8_t& property, const std::vector< uint8_t >& uuid, const uint16_t& valueHandle) {
-
-	//PrintTime();
-	//std::cout << "\033[32m" << btConnId << "\033[37m"; 
-	//std::cout << ": Characteristic with dec " << declarationHandle << ", val " << valueHandle << ", and UUID: ";
+	PrintTime();
+	std::cout << "\033[32m" << btConnId << "\033[37m"; 
+	std::cout << ": Characteristic with dec " << declarationHandle << ", val " << valueHandle << ", and UUID: ";
 
 	// NOTE: the property field has the flags...see pg. 166 in SDK doc for decode
 	
@@ -178,56 +175,73 @@ void GattClient::DiscoverCharacInd(const uint32_t& gattId, const uint32_t& btCon
 	int j = 0;
 	// spit out the UUID byte by byte...
 	for (std::vector< uint8_t >::const_iterator i=uuid.begin(); i != uuid.end(); i++) {
+		//printf("%.2x", *i);
 		sprintf( tempId, "%02x", *i );
 		std::string temp(tempId);
 		currentUUID += temp;
-	} // for 
+	} /* for */
 
-	// these are the first 8 bytes that identify each characteristic
-	// we're looking for
+	// look for Particle-specific characteristics, load up the particle
+	// struct, and update the particleList map with those values...
 	std::string passcodeChar = "0000c69b"; 
 	std::string opcodeChar = "0000c69c"; 
 	std::string operandChar = "0000c69d"; 
 	std::string resultChar = "0000c69e"; 
 
+	// grab the structure with the handles...
+	particle tempstruct = particleList.find( btConnId )->second;
 	if( currentUUID.find( passcodeChar ) != -1 ) {
-		passcodes.insert( passcodes_t::value_type( btConnId, valueHandle ));
-		/*
+		// Load the passcode handle into the appropriate struct
+		tempstruct.passcode = valueHandle;
 		std::cout << "PASSCODE ";
-		std::cout << "p: " << passcodes.find( btConnId )->second  << " oc: " << opcodes.find( btConnId )->second; 
-		std::cout << " od: " << operands.find( btConnId )->second << " r: " << results.find( btConnId )->second << " "; 
-		*/
+		std::cout << "p: " << tempstruct.passcode << " oc: " << tempstruct.opcode << " od: " << tempstruct.operand << " r: " << tempstruct.result << " "; 
 
 		std::vector< uint8_t > message;
 		// loading ASCII decimal values for '0x0000000000000000'
 		for( int i = 0; i < 16; i++ ){
 			message.push_back( 0x00 );
 		} // for
-		this->WriteReq( gattId, btConnId, passcodes.find( btConnId )->second, 0,  message ) ;
+		this->WriteReq( gattId, btConnId, tempstruct.passcode, 0,  message ) ;
 
 	} else if( currentUUID.find( opcodeChar ) != -1 ) {
-		opcodes.insert( opcodes_t::value_type( btConnId, valueHandle ));
-		/*
-		std::cout << "OPCODE ";
-		std::cout << "p: " << passcodes.find( btConnId )->second  << " oc: " << opcodes.find( btConnId )->second; 
-		std::cout << " od: " << operands.find( btConnId )->second << " r: " << results.find( btConnId )->second << " "; 
-		*/
+		tempstruct.opcode = valueHandle;
+		std::cout << "***** OPCODE ***** ";
 	} else if( currentUUID.find( operandChar ) != -1 ) {
-		operands.insert( operands_t::value_type( btConnId, valueHandle ));
-		/*
-		std::cout << "OPERAND ";
-		std::cout << "p: " << passcodes.find( btConnId )->second  << " oc: " << opcodes.find( btConnId )->second; 
-		std::cout << " od: " << operands.find( btConnId )->second << " r: " << results.find( btConnId )->second << " "; 
-		*/
+		tempstruct.operand = valueHandle;
+		std::cout << "***** OPERAND ***** ";
 	} else if( currentUUID.find( resultChar ) != -1 ) {
-		results.insert( results_t::value_type( btConnId, valueHandle ));
-		/*
-		std::cout << "RESULT ";
-		std::cout << "p: " << passcodes.find( btConnId )->second  << " oc: " << opcodes.find( btConnId )->second; 
-		std::cout << " od: " << operands.find( btConnId )->second << " r: " << results.find( btConnId )->second << " "; 
-		*/
+		tempstruct.result = valueHandle;
+		std::cout << "***** RESULT ***** ";
 	}
-	//std::cout << "(0x" << std::hex << (uint16_t) property << std::dec << ")" << std::endl;
+	// save the modified handle structure...
+	particleList.insert( particles::value_type( btConnId, tempstruct ));
+	//this->WriteReq( gattId, btConnId, valueHandle, 0,  message ) ;
+
+	/*
+	 *  This is for the gumstick
+	 *
+	// check for a match, if same, print the UUID blue
+	// and attempt to write and read from it...
+	if( currentUUID == targetUUID )
+	{
+		std::cout << "\033[36m  " << currentUUID << "\033[37m ";
+
+		std::vector< uint8_t > message;
+		// loading ASCII decimal values for 'HAR'
+		message.push_back( 72 );
+		message.push_back( 65 );
+		message.push_back( 82 );
+		//message.push_back( 0 );
+
+		// store the valueHandle for reading later...
+		myHandle = valueHandle;
+
+		this->WriteReq( gattId, btConnId, valueHandle, 0,  message ) ;
+	} else {
+		std::cout << "\033[32m  " << currentUUID << "\033[37m  ";
+	} // if currentUUID 
+	*/
+	std::cout << "(0x" << std::hex << (uint16_t) property << std::dec << ")";
 
 	// Again with the special cases...
 	if (std::equal(temperature_measurement_uuid, temperature_measurement_uuid+16, uuid.begin())) {
@@ -236,17 +250,17 @@ void GattClient::DiscoverCharacInd(const uint32_t& gattId, const uint32_t& btCon
 		this->health_thermometer_service[btConnId].temperature_measurement_characteristic.property = property;
 		this->CancelReq(gattId, btConnId);
 	}
+	else
+		printf("\n");
 }
 	
 void GattClient::DiscoverCharacCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint32_t& btConnId) {
-	/*
 	PrintTime();
 	std::cout << "\033[32m" << btConnId << "\033[37m"; 
 	std::cout << ": Service characteristics discovered. ";
-	*/
 
 	if ( resultCode == BT_GATT_RESULT_SUCCESS || resultCode == BT_GATT_RESULT_CANCELLED) {
-		//std::cout << "Discovering characteristic descriptors...\n";
+		std::cout << "Discovering characteristic descriptors...\n";
 		this->DiscoverAllCharacDescriptorsReq(
 			gattId,
 			btConnId,
@@ -260,7 +274,6 @@ void GattClient::DiscoverCharacCfm(const uint32_t& gattId, const uint16_t& resul
 }
 
 void GattClient::DiscoverCharacDescriptorsInd(const uint32_t& gattId, const uint32_t& btConnId, const std::vector< uint8_t >& uuid, const uint16_t& descriptorHandle) {
-	/*
 	std::cout << "\033[32m" << btConnId << "\033[37m"; 
 	std::cout << ":   Discovered characteristic descriptor UUID ";
 	std::cout << "\033[36m"; 
@@ -268,7 +281,7 @@ void GattClient::DiscoverCharacDescriptorsInd(const uint32_t& gattId, const uint
 	for (std::vector< uint8_t >::const_iterator i=uuid.begin(); i != uuid.end(); i++) printf("%.2x", *i);
                fflush(stdout);
 	std::cout << "\033[37m" << std::endl;
-	*/
+	
 	if (std::equal(client_characteristic_configuration_uuid, client_characteristic_configuration_uuid+16, uuid.begin())) {
 		std::cout << btConnId << ": Client characteristic configuration handle found for temperature measurement characteristic\n";
 		this->health_thermometer_service[btConnId].temperature_measurement_characteristic.client_characteristic_configuration_handle = descriptorHandle;
@@ -277,11 +290,9 @@ void GattClient::DiscoverCharacDescriptorsInd(const uint32_t& gattId, const uint
 }
 	
 void GattClient::DiscoverCharacDescriptorsCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint32_t& btConnId) {
-	/*
 	PrintTime();
 	std::cout << "\033[32m" << btConnId << "\033[37m"; 
 	std::cout << ":   Characteristic descriptors discovered." << std::endl;
-	*/
 
 	// may need to do something here...
 	
@@ -313,11 +324,15 @@ void  GattClient::WriteCfm(const uint32_t& gattId, const uint16_t& resultCode, c
 		this->DisconnectReq(gattId, btConnId);
 	}
 	else {
-		std::cout << btConnId << ": -> Write successful " << std::endl;
+		std::cout << btConnId << ":   Write successful: " << std::hex << resultCode << std::dec << std::endl;
 		// HAR NOTE: added this here to read after a successful write...myHandle is a global
+		particle tempstruct;
+		tempstruct = particleList.find( btConnId )->second;
+		myHandle = tempstruct.result;
 		// don't try to read if we don't have a handle for the result characteristic yet
-		if( results.find( btConnId )->second != 0 )
-			this->ReadReq( gattId, btConnId, results.find( btConnId )->second, 0 );
+		if( myHandle != 0) {
+			this->ReadReq( gattId, btConnId, myHandle, 0 );
+		}
 	}
 }
 
@@ -328,7 +343,7 @@ void  GattClient::ReadCfm(const uint32_t& gattId, const uint16_t& resultCode, co
 		this->DisconnectReq(gattId, btConnId);
 	}
 	else {
-		std::cout << btConnId << ": <- Read successful; Data: ";
+		std::cout << btConnId << ": " << "   Read successful; Data: ";
 		for (std::vector< uint8_t >::const_iterator i=value.begin(); i != value.end(); i++) printf("%.2x", *i);
 		std::cout << std::endl;
 	}

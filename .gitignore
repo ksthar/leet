@@ -1,3 +1,5 @@
 *.swp
 *.o
+.gitignore
 leet
+com_bluegiga_v2_bt.h
