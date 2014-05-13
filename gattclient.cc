@@ -19,6 +19,7 @@ std::string targetUUID = "4c23efb61bc83590064e0100cd67f5cb";
 // this handle is used for reading a characteristic
 uint16_t myHandle;
 int8_t threshold = -120;
+uint8_t connections = 0;
 
 // setup my characteristic maps
 passcodes_t passcodes;
@@ -137,7 +138,7 @@ void GattClient::DiscoverServicesCfm(const uint32_t& gattId, const uint16_t& res
 	// Now that we know the services, let's disconnect...
 	if (disconnect) {
 		std::cout << "Disconnecting...\n";
-		this->DisconnectReq(gattId, btConnId);
+		//this->DisconnectReq(gattId, btConnId);
 	}
 }
 	
@@ -149,7 +150,15 @@ void GattClient::ConnectInd(const uint32_t& gattId, const uint32_t& btConnId, co
 
 	std::cout << "\033[32m" << btConnId << "\033[37m"; 
 	if (resultCode == 0) {
-		std::cout << ": Connected to " << address  << ". Discovering all primary services...\n";
+		connections++;
+		std::cout << ": Connected to " << address << std::endl; //  << ". Discovering all primary services...\n";
+		
+		char numConn[ 4 ];
+		sprintf( numConn, "%d", connections );
+		std::string numConnections( numConn );
+		PrintTime();
+		std::cout << "        Now connected to " << numConnections  << " devices" << std::endl;
+		
 		this->DiscoverAllPrimaryServicesReq(gattId, btConnId);
 	}
 	else
@@ -158,6 +167,7 @@ void GattClient::ConnectInd(const uint32_t& gattId, const uint32_t& btConnId, co
 
 void GattClient::DisconnectInd(const uint32_t& gattId, const uint32_t& btConnId, const uint16_t& reasonCode, const uint16_t& reasonSupplier, const std::string& address, const uint32_t& connInfo) {
 	PrintTime();
+	--connections;
 	std::cout << "\033[32m" << btConnId << "\033[37m"; 
 	std::cout << ": Disconnected from " << address << " (" << btConnId << ")" << std::endl;
 	this->health_thermometer_service.erase(btConnId);
@@ -255,7 +265,7 @@ void GattClient::DiscoverCharacCfm(const uint32_t& gattId, const uint16_t& resul
 	}
 	else {
 		std::cout << "Disconnecting...\n";
-		this->DisconnectReq(gattId, btConnId);
+		//this->DisconnectReq(gattId, btConnId);
 	}
 }
 
@@ -310,7 +320,7 @@ void  GattClient::WriteCfm(const uint32_t& gattId, const uint16_t& resultCode, c
 	PrintTime();
 	if (resultCode != BT_GATT_RESULT_SUCCESS) {
 		std::cout << btConnId << ": Writing client characteristic configuration failed: " << resultCode << ", " << resultSupplier << std::endl;
-		this->DisconnectReq(gattId, btConnId);
+		//this->DisconnectReq(gattId, btConnId);
 	}
 	else {
 		std::cout << btConnId << ": -> Write successful " << std::endl;
@@ -325,7 +335,7 @@ void  GattClient::ReadCfm(const uint32_t& gattId, const uint16_t& resultCode, co
 	PrintTime();
 	if (resultCode != BT_GATT_RESULT_SUCCESS) {
 		std::cout << btConnId << ":   Reading client characteristic failed: " << resultCode << ", " << resultSupplier << std::endl;
-		this->DisconnectReq(gattId, btConnId);
+		//this->DisconnectReq(gattId, btConnId);
 	}
 	else {
 		std::cout << btConnId << ": <- Read successful; Data: ";
