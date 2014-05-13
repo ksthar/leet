@@ -159,7 +159,7 @@ void GattClient::ConnectInd(const uint32_t& gattId, const uint32_t& btConnId, co
 		PrintTime();
 		std::cout << "        Now connected to " << numConnections  << " devices" << std::endl;
 		
-		this->DiscoverAllPrimaryServicesReq(gattId, btConnId);
+		//this->DiscoverAllPrimaryServicesReq(gattId, btConnId);
 	}
 	else
 		std::cout << ": Connection to " << address << "failed: " << resultCode << ", " << resultSupplier << std::endl;

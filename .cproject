@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?fileVersion 4.0.0?><cproject storage_type_id="org.eclipse.cdt.core.XmlProjectDescriptionStorage">
+	<storageModule moduleId="org.eclipse.cdt.core.settings">
+		<cconfiguration id="org.yocto.cmake.managedbuilder.toolchain.gnu.exe.524781685">
+			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="org.yocto.cmake.managedbuilder.toolchain.gnu.exe.524781685" moduleId="org.eclipse.cdt.core.settings" name="Default">
+				<externalSettings/>
+				<extensions>
+					<extension id="org.eclipse.cdt.core.GCCErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.GLDErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.ELF" point="org.eclipse.cdt.core.BinaryParser"/>
+				</extensions>
+			</storageModule>
+			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
+				<configuration buildProperties="" id="org.yocto.cmake.managedbuilder.toolchain.gnu.exe.524781685" name="Default" parent="org.eclipse.cdt.build.core.emptycfg">
+					<folderInfo id="org.yocto.cmake.managedbuilder.toolchain.gnu.exe.524781685.1926545308" name="/" resourcePath="">
+						<toolChain id="org.yocto.cmake.managedbuilder.toolchain.gnu.exe.1618294133" name="org.yocto.cmake.managedbuilder.toolchain.gnu.exe" superClass="org.yocto.cmake.managedbuilder.toolchain.gnu.exe">
+							<targetPlatform id="org.yocto.cmake.managedbuilder.target.gnu.exe.361121544" isAbstract="false" name="Debug Platform" superClass="org.yocto.cmake.managedbuilder.target.gnu.exe"/>
+							<builder id="org.yocto.cmake.managedbuilder.builder.gnu.exe.345028960" managedBuildOn="false" name="Yocto CMake Environment Builder.Default" superClass="org.yocto.cmake.managedbuilder.builder.gnu.exe"/>
+							<tool id="org.yocto.cmake.managedbuilder.cmakeconfigure.gnu.exe.1256707505" name="CMake configure" superClass="org.yocto.cmake.managedbuilder.cmakeconfigure.gnu.exe"/>
+							<tool id="org.yocto.cmake.managedbuilder.compiler.gnu.exe.807084326" name="GCC C++ Compiler" superClass="org.yocto.cmake.managedbuilder.compiler.gnu.exe"/>
+							<tool id="org.yocto.cmake.managedbuilder.linker.gnu.exe.1354644316" name="GCC C++ Linker" superClass="org.yocto.cmake.managedbuilder.linker.gnu.exe"/>
+							<tool id="org.yocto.cmake.managedbuilder.compiler.gnu.c.exe.210787925" name="GCC C Compiler" superClass="org.yocto.cmake.managedbuilder.compiler.gnu.c.exe"/>
+							<tool id="org.yocto.cmake.managedbuilder.linker.gnu.c.exe.1824607236" name="GCC C Linker" superClass="org.yocto.cmake.managedbuilder.linker.gnu.c.exe"/>
+						</toolChain>
+					</folderInfo>
+				</configuration>
+			</storageModule>
+			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
+		</cconfiguration>
+	</storageModule>
+	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
+		<project id="leet.null.1265061946" name="leet"/>
+	</storageModule>
+	<storageModule moduleId="scannerConfiguration">
+		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
+</cproject>
