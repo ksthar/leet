@@ -2,27 +2,42 @@
 #include "gattclient.h"
 #include <signal.h>
 #include <iostream>
+#include <string.h>
+
+
+#define UNIX_PATH_MAX 108
 
 DBus::BusDispatcher dispatcher;
 
 bool scanning = true;
 
+// ==================================================================================================================
+// HELPERS
+// ==================================================================================================================
 void sighandler(int sig) {
 	dispatcher.leave(false);
 }
 
-
 // TODO: signal blocking when appropriate
 
+// ==================================================================================================================
+// MAIN
+// ==================================================================================================================
 int main() {
 
+	// catch ctrl-c to exit the dispatcher
 	signal(SIGINT, sighandler);
+
+	
+	std::cout << "\033[36m" << "--------------------------<  Initiate BLE Scan  >--------------------------" << "\033[37m" << std::endl;
+	
+	// ==================================================================================================================
+	// SCAN BLE, ENUMERATE GATT, READ, & WRITE
+	// ==================================================================================================================
 	DBus::default_dispatcher = &dispatcher;
 	DBus::Connection conn = DBus::Connection::SystemBus();
 	GattClient gc(conn, "/bt/gatt", "com.bluegiga.v2.bt0");
 	
-	std::cout << "\033[36m" << "--------------------------< Hars Hacked leet App >--------------------------" << "\033[37m" << std::endl;
-
 	gc.RegisterReq(0);
 	dispatcher.enter();
 	if (!gc.isRegistered())
@@ -37,8 +52,10 @@ int main() {
 	if (!gc.isRegistered()) 
 		return 3;
 
-	// HAR NOTE: Need to stop scanning after a loop or two and process the results...
-	
+
+	// ==================================================================================================================
+	// CLEAN UP BLE STUFF
+	// ==================================================================================================================
 	std::cout << "Stopping scan... ";
 	if (!gc.startStopScan(false)) // stop scanning
 		return 4;
@@ -48,5 +65,7 @@ int main() {
 	gc.UnregisterReq(gc.getGattId());
 	dispatcher.enter();	 
 	return (gc.isRegistered() ? 5 : 0);
+	return 0;
+
 }
 

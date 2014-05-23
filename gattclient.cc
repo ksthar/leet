@@ -3,10 +3,16 @@
 #include <iostream>
 #include <stdlib.h>
 #include <stdio.h>
-#include <time.h>
+
+// for domain sockets
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <com_bluegiga_v2_bt.h>
 #include <math.h>
+#include <time.h>
 
 
 const uint8_t GattClient::client_characteristic_configuration_uuid[16] = {0x00, 0x00, 0x29, 0x02, 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb};
@@ -18,7 +24,7 @@ std::string targetUUID = "4c23efb61bc83590064e0100cd67f5cb";
 
 // this handle is used for reading a characteristic
 uint16_t myHandle;
-int8_t threshold = -120;
+int8_t threshold = -80;
 uint8_t connections = 0;
 
 // setup my characteristic maps
@@ -26,6 +32,14 @@ passcodes_t passcodes;
 opcodes_t opcodes;
 operands_t operands;
 results_t results;
+gumstick_t gumsticks;
+
+// Global that says whether we want to write or not
+bool connToBLE = false;
+void SetConnection( bool setConn ){ connToBLE = setConn; }
+bool GetConnection(){ return connToBLE; }
+#define UNIX_PATH_MAX 108
+
 
 // Print a time stamp
 void PrintTime() {
@@ -41,6 +55,46 @@ void PrintTime() {
 	//std::cout << "[ " << timeinfo->tm_hour << ":" << timeinfo->tm_min << ":" << timeinfo->tm_sec << " ]  "; // << std::endl;
 }
 
+void CheckRS485(){
+	// create a domain socket client here
+	struct sockaddr_un address;
+	int socket_fd, nbytes;
+	char buffer[ 256 ];
+
+	socket_fd = socket( PF_UNIX, SOCK_STREAM, 0 );
+	if( socket_fd < 0 ){
+		PrintTime();
+		std::cout << "ERROR: socket() failed." << std::endl;
+	} // if socket
+
+	memset( &address, 0, sizeof( struct sockaddr_un ));
+	address.sun_family = AF_UNIX;
+	snprintf( address.sun_path, UNIX_PATH_MAX, "./demo_socket" );
+
+	if( connect( socket_fd, (struct sockaddr *) &address, sizeof( struct sockaddr_un )) != 0 ){
+		PrintTime();
+		std::cout << "ERROR: connect() failed." << std::endl;
+	} // if connect
+
+	// first, check for a message 
+	nbytes = read( socket_fd, buffer, 256 );
+	buffer[ nbytes ] = 0;
+	std::string msg( buffer );
+
+	PrintTime();
+	std::cout << "MESSAGE FROM RS485: " << buffer << std::endl;
+	if( msg == "01" ){
+		SetConnection( true );
+	} else {
+		SetConnection( false );
+	} // if msg
+
+	// here's where you will decide what you want to send the RS486 daemon...
+	nbytes = snprintf( buffer, 256, "00" );
+	write( socket_fd, buffer, nbytes );
+
+	close( socket_fd );
+}
 
 void GattClient::ScanCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier) {
 	if (resultCode != 0) {
@@ -48,7 +102,7 @@ void GattClient::ScanCfm(const uint32_t& gattId, const uint16_t& resultCode, con
 		this->UnregisterReq(this->getGattId());
 	}
 	else {
-		std::cout << "ScanCfm passed.\n";
+		std::cout << "ScanCfm passed." << std::endl;
 		dispatcher.leave(false);
 	}
 }
@@ -85,19 +139,26 @@ void GattClient::ReportInd(const uint32_t& gattId, const uint8_t& eventType, con
 			std::string rssiMin( thresh );
 
 			std::cout << "\033[035m  " << gattId << "\033[037m" << " Found " << address << " " <<  rssi << " < " << rssiMin << std::endl;
-			this->CentralReq(gattId, address, 0, 0);
+			if( GetConnection() ) {
+				this->CentralReq(gattId, address, 0, 0);
+				SetConnection( false );
+			} // if connToBLE
+
+			CheckRS485();
+
 		} /* if rssi */
 	} /* if !data.empty */
 }
 
 void GattClient::DiscoverServicesInd(const uint32_t& gattId, const uint32_t& btConnId, const uint16_t& startHandle, const uint16_t& endHandle, const std::vector< uint8_t >& uuid){
+
 	/*
 	PrintTime();
 	std::cout << "\033[032m" << btConnId << "\033[37m: Discovered service, start: " << startHandle << ", end: " << endHandle << ", ID: ";  
 	std::cout << "\033[036m"; 
-
-	for (std::vector< uint8_t >::const_iterator i=uuid.begin(); i != uuid.end(); i++) printf("%.2x", *i);
 	*/
+
+	//for (std::vector< uint8_t >::const_iterator i=uuid.begin(); i != uuid.end(); i++) printf("%.2x", *i);
 
 	// handle this spectial case...must have been a demo
 	if (std::equal(health_thermometer_uuid, health_thermometer_uuid+16, uuid.begin())) {
@@ -111,10 +172,8 @@ void GattClient::DiscoverServicesInd(const uint32_t& gattId, const uint32_t& btC
 	//fflush(stdout);
 
 	// Now, let's find the characteristics...
-	/*
-	PrintTime();
-	std::cout << "\033[032m" << btConnId << "\033[37m:   Discovering characteristics for service with start: " << startHandle << std::endl;  
-	*/
+	//PrintTime();
+	//std::cout << "\033[032m" << btConnId << "\033[37m:   Discovering characteristics for service with start: " << startHandle << std::endl;  
 	this->DiscoverAllCharacOfAServiceReq( gattId, btConnId, startHandle, endHandle );
 }
 	
@@ -156,10 +215,12 @@ void GattClient::ConnectInd(const uint32_t& gattId, const uint32_t& btConnId, co
 		char numConn[ 4 ];
 		sprintf( numConn, "%d", connections );
 		std::string numConnections( numConn );
+		/*
 		PrintTime();
 		std::cout << "        Now connected to " << numConnections  << " devices" << std::endl;
+		*/
 		
-		//this->DiscoverAllPrimaryServicesReq(gattId, btConnId);
+		this->DiscoverAllPrimaryServicesReq(gattId, btConnId);
 	}
 	else
 		std::cout << ": Connection to " << address << "failed: " << resultCode << ", " << resultSupplier << std::endl;
@@ -170,14 +231,16 @@ void GattClient::DisconnectInd(const uint32_t& gattId, const uint32_t& btConnId,
 	--connections;
 	std::cout << "\033[32m" << btConnId << "\033[37m"; 
 	std::cout << ": Disconnected from " << address << " (" << btConnId << ")" << std::endl;
-	this->health_thermometer_service.erase(btConnId);
+	this->ScanReqStop( gattId );
 }
 
 void GattClient::DiscoverCharacInd(const uint32_t& gattId, const uint32_t& btConnId, const uint16_t& declarationHandle, const uint8_t& property, const std::vector< uint8_t >& uuid, const uint16_t& valueHandle) {
 
-	//PrintTime();
-	//std::cout << "\033[32m" << btConnId << "\033[37m"; 
-	//std::cout << ": Characteristic with dec " << declarationHandle << ", val " << valueHandle << ", and UUID: ";
+	/*
+	PrintTime();
+	std::cout << "\033[32m" << btConnId << "\033[37m"; 
+	std::cout << ": Characteristic with dec " << declarationHandle << ", val " << valueHandle << ", and UUID: ";
+	*/
 
 	// NOTE: the property field has the flags...see pg. 166 in SDK doc for decode
 	
@@ -199,6 +262,9 @@ void GattClient::DiscoverCharacInd(const uint32_t& gattId, const uint32_t& btCon
 	std::string opcodeChar = "0000c69c"; 
 	std::string operandChar = "0000c69d"; 
 	std::string resultChar = "0000c69e"; 
+
+	// or, if we're looking at a gumstick
+	std::string gumstickChar = "4c23efb61bc8"; 
 
 	if( currentUUID.find( passcodeChar ) != -1 ) {
 		passcodes.insert( passcodes_t::value_type( btConnId, valueHandle ));
@@ -236,6 +302,19 @@ void GattClient::DiscoverCharacInd(const uint32_t& gattId, const uint32_t& btCon
 		std::cout << "p: " << passcodes.find( btConnId )->second  << " oc: " << opcodes.find( btConnId )->second; 
 		std::cout << " od: " << operands.find( btConnId )->second << " r: " << results.find( btConnId )->second << " "; 
 		*/
+	} else if( currentUUID.find( gumstickChar ) != -1 ) {
+		gumsticks.insert( gumstick_t::value_type( btConnId, valueHandle ));
+		//std::cout << "GUMSTICK ";
+		/*
+		std::cout << "p: " << passcodes.find( btConnId )->second  << " oc: " << opcodes.find( btConnId )->second; 
+		std::cout << " od: " << operands.find( btConnId )->second << " r: " << results.find( btConnId )->second << " "; 
+		*/
+		std::vector< uint8_t > message;
+		// loading ASCII decimal values for '0x0000000000000000'
+		for( int i = 0; i < 16; i++ ){
+			message.push_back( 0x00 );
+		} // for
+		this->WriteReq( gattId, btConnId, gumsticks.find( btConnId )->second, 0,  message ) ;
 	}
 	//std::cout << "(0x" << std::hex << (uint16_t) property << std::dec << ")" << std::endl;
 
@@ -341,6 +420,8 @@ void  GattClient::ReadCfm(const uint32_t& gattId, const uint16_t& resultCode, co
 		std::cout << btConnId << ": <- Read successful; Data: ";
 		for (std::vector< uint8_t >::const_iterator i=value.begin(); i != value.end(); i++) printf("%.2x", *i);
 		std::cout << std::endl;
+		// We successfully read, now let's disconnect
+		this->DisconnectReq(gattId, btConnId);
 	}
 }
 

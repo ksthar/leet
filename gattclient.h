@@ -27,6 +27,7 @@ typedef std::map< uint16_t, uint16_t, std::less< uint16_t > > passcodes_t;
 typedef std::map< uint16_t, uint16_t, std::less< uint16_t > > opcodes_t;
 typedef std::map< uint16_t, uint16_t, std::less< uint16_t > > operands_t;
 typedef std::map< uint16_t, uint16_t, std::less< uint16_t > > results_t;
+typedef std::map< uint16_t, uint16_t, std::less< uint16_t > > gumstick_t;
 
 class GattClient: public gatt_proxy, public DBus::IntrospectableProxy, public DBus::ObjectProxy 
 {
