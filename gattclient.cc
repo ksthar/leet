@@ -35,7 +35,7 @@ results_t results;
 gumstick_t gumsticks;
 
 // Global that says whether we want to write or not
-bool connToBLE = false;
+bool connToBLE = true;
 void SetConnection( bool setConn ){ connToBLE = setConn; }
 bool GetConnection(){ return connToBLE; }
 #define UNIX_PATH_MAX 108
@@ -140,11 +140,14 @@ void GattClient::ReportInd(const uint32_t& gattId, const uint8_t& eventType, con
 
 			std::cout << "\033[035m  " << gattId << "\033[037m" << " Found " << address << " " <<  rssi << " < " << rssiMin << std::endl;
 			if( GetConnection() ) {
-				this->CentralReq(gattId, address, 0, 0);
-				SetConnection( false );
+				// only connect if we have less than five existing connections
+				if( connections < 5 ){
+					this->CentralReq(gattId, address, 0, 0);
+				} // if connections
+				//SetConnection( false );
 			} // if connToBLE
 
-			CheckRS485();
+			//CheckRS485();
 
 		} /* if rssi */
 	} /* if !data.empty */
@@ -210,7 +213,9 @@ void GattClient::ConnectInd(const uint32_t& gattId, const uint32_t& btConnId, co
 	std::cout << "\033[32m" << btConnId << "\033[37m"; 
 	if (resultCode == 0) {
 		connections++;
-		std::cout << ": Connected to " << address << std::endl; //  << ". Discovering all primary services...\n";
+		char myConnections[ 4 ];
+		sprintf( myConnections, "%d", connections );
+		std::cout << " [" << myConnections << "] Connected to " << address << std::endl; //  << ". Discovering all primary services...\n";
 		
 		char numConn[ 4 ];
 		sprintf( numConn, "%d", connections );
@@ -231,7 +236,7 @@ void GattClient::DisconnectInd(const uint32_t& gattId, const uint32_t& btConnId,
 	--connections;
 	std::cout << "\033[32m" << btConnId << "\033[37m"; 
 	std::cout << ": Disconnected from " << address << " (" << btConnId << ")" << std::endl;
-	this->ScanReqStop( gattId );
+	//this->ScanReqStop( gattId );
 }
 
 void GattClient::DiscoverCharacInd(const uint32_t& gattId, const uint32_t& btConnId, const uint16_t& declarationHandle, const uint8_t& property, const std::vector< uint8_t >& uuid, const uint16_t& valueHandle) {
@@ -421,7 +426,7 @@ void  GattClient::ReadCfm(const uint32_t& gattId, const uint16_t& resultCode, co
 		for (std::vector< uint8_t >::const_iterator i=value.begin(); i != value.end(); i++) printf("%.2x", *i);
 		std::cout << std::endl;
 		// We successfully read, now let's disconnect
-		this->DisconnectReq(gattId, btConnId);
+		//this->DisconnectReq(gattId, btConnId);
 	}
 }
 
