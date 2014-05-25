@@ -144,10 +144,10 @@ void GattClient::ReportInd(const uint32_t& gattId, const uint8_t& eventType, con
 				if( connections < 5 ){
 					this->CentralReq(gattId, address, 0, 0);
 				} // if connections
-				//SetConnection( false );
-			} // if connToBLE
+				SetConnection( false );
+			} // if GetConnection
 
-			//CheckRS485();
+			CheckRS485();
 
 		} /* if rssi */
 	} /* if !data.empty */
