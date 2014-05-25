@@ -34,10 +34,19 @@ operands_t operands;
 results_t results;
 gumstick_t gumsticks;
 
-// Global that says whether we want to write or not
+// Global that says whether we want to connect or not
 bool connToBLE = true;
 void SetConnection( bool setConn ){ connToBLE = setConn; }
 bool GetConnection(){ return connToBLE; }
+
+// says whether we want to write (true) or read (false) from socket
+// we initialize to read a command first
+bool writeToRS485 = false;
+void SetWriteToRS485( bool setWrite ){ writeToRS485 = setWrite; }
+bool GetWriteToRS485(){ return writeToRS485; }
+// initialize our reply to zeros
+char replyToRSI[ 4 ] = { "0" };
+
 #define UNIX_PATH_MAX 108
 
 
@@ -76,22 +85,33 @@ void CheckRS485(){
 		std::cout << "ERROR: connect() failed." << std::endl;
 	} // if connect
 
-	// first, check for a message 
-	nbytes = read( socket_fd, buffer, 256 );
-	buffer[ nbytes ] = 0;
-	std::string msg( buffer );
-
-	PrintTime();
-	std::cout << "MESSAGE FROM RS485: " << buffer << std::endl;
-	if( msg == "01" ){
-		SetConnection( true );
+	// we alternate reading and writing to the socket
+	if( GetWriteToRS485() ){
+		PrintTime();
+		std::cout << "Writing " << replyToRSI << " to RS-485" << std::endl;
+		nbytes = snprintf( buffer, 256, replyToRSI );
+		write( socket_fd, buffer, nbytes );
+		SetWriteToRS485( false ); // read next time
 	} else {
-		SetConnection( false );
-	} // if msg
+		PrintTime();
+		// first, check for a message 
+		nbytes = read( socket_fd, buffer, 256 );
+		buffer[ nbytes ] = 0;
+		std::string msg( buffer );
+		std::cout << "Read " << msg << " from RS-485" << std::endl;
 
-	// here's where you will decide what you want to send the RS486 daemon...
-	nbytes = snprintf( buffer, 256, "00" );
-	write( socket_fd, buffer, nbytes );
+		// on an '01' message, connect to BLE device
+		if( msg == "01" ){
+			SetConnection( true );
+			// our response will be filled with ReadCfm data
+			// we will also set write to true in ReadCfm to force a reply
+		} else {
+			SetConnection( false );
+		} // if msg
+		// create a dummy '00' response
+		sprintf( replyToRSI, "%02d", 0 );
+		SetWriteToRS485( true ); // write reply next time
+	} // if GetWriteToRS485
 
 	close( socket_fd );
 }
@@ -144,10 +164,10 @@ void GattClient::ReportInd(const uint32_t& gattId, const uint8_t& eventType, con
 				if( connections < 5 ){
 					this->CentralReq(gattId, address, 0, 0);
 				} // if connections
-				//SetConnection( false );
+				SetConnection( false );
 			} // if connToBLE
 
-			//CheckRS485();
+			CheckRS485();
 
 		} /* if rssi */
 	} /* if !data.empty */
@@ -164,6 +184,7 @@ void GattClient::DiscoverServicesInd(const uint32_t& gattId, const uint32_t& btC
 	//for (std::vector< uint8_t >::const_iterator i=uuid.begin(); i != uuid.end(); i++) printf("%.2x", *i);
 
 	// handle this spectial case...must have been a demo
+	/*
 	if (std::equal(health_thermometer_uuid, health_thermometer_uuid+16, uuid.begin())) {
 		printf(" The service is Health thermometer service.");
 		this->CancelReq(gattId, btConnId);
@@ -171,6 +192,7 @@ void GattClient::DiscoverServicesInd(const uint32_t& gattId, const uint32_t& btC
 		this->health_thermometer_service[btConnId].start_handle = startHandle;
 		this->health_thermometer_service[btConnId].end_handle = endHandle;
 	}
+	*/
 	//std::cout << "\033[037m" << std::endl; 
 	//fflush(stdout);
 
@@ -188,6 +210,7 @@ void GattClient::DiscoverServicesCfm(const uint32_t& gattId, const uint16_t& res
 	*/
 	bool disconnect = false;
 
+	/*
 	if (resultCode == BT_GATT_RESULT_SUCCESS || resultCode == BT_GATT_RESULT_CANCELLED) {
 		std::map<uint32_t, DiscoveredService>::const_iterator service = this->health_thermometer_service.find(btConnId);	
 		if (service != this->health_thermometer_service.end()) { // health thermometer service was found
@@ -196,6 +219,7 @@ void GattClient::DiscoverServicesCfm(const uint32_t& gattId, const uint16_t& res
 			this->DiscoverAllCharacOfAServiceReq(gattId, btConnId, service->second.start_handle, service->second.end_handle);
 		}
 	}
+	*/
 
 	// Now that we know the services, let's disconnect...
 	if (disconnect) {
@@ -216,7 +240,7 @@ void GattClient::ConnectInd(const uint32_t& gattId, const uint32_t& btConnId, co
 		char myConnections[ 4 ];
 		sprintf( myConnections, "%d", connections );
 		std::cout << " [" << myConnections << "] Connected to " << address << std::endl; //  << ". Discovering all primary services...\n";
-		
+
 		char numConn[ 4 ];
 		sprintf( numConn, "%d", connections );
 		std::string numConnections( numConn );
@@ -324,12 +348,14 @@ void GattClient::DiscoverCharacInd(const uint32_t& gattId, const uint32_t& btCon
 	//std::cout << "(0x" << std::hex << (uint16_t) property << std::dec << ")" << std::endl;
 
 	// Again with the special cases...
+	/*
 	if (std::equal(temperature_measurement_uuid, temperature_measurement_uuid+16, uuid.begin())) {
 		printf(" Temperature Measurement characteristic found.\n");
 		this->health_thermometer_service[btConnId].temperature_measurement_characteristic.value_handle = valueHandle;
 		this->health_thermometer_service[btConnId].temperature_measurement_characteristic.property = property;
 		this->CancelReq(gattId, btConnId);
 	}
+	*/
 }
 	
 void GattClient::DiscoverCharacCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint32_t& btConnId) {
@@ -423,10 +449,15 @@ void  GattClient::ReadCfm(const uint32_t& gattId, const uint16_t& resultCode, co
 	}
 	else {
 		std::cout << btConnId << ": <- Read successful; Data: ";
-		for (std::vector< uint8_t >::const_iterator i=value.begin(); i != value.end(); i++) printf("%.2x", *i);
+		for (std::vector< uint8_t >::const_iterator i=value.begin(); i != value.end(); i++) {
+			printf("%.2x", *i);
+			sprintf( replyToRSI, "%.2x", *i );
+		}
 		std::cout << std::endl;
+		SetWriteToRS485( true ); // write reply next time
+
 		// We successfully read, now let's disconnect
-		//this->DisconnectReq(gattId, btConnId);
+		this->DisconnectReq(gattId, btConnId);
 	}
 }
 
