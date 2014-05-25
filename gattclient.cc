@@ -164,10 +164,11 @@ void GattClient::ReportInd(const uint32_t& gattId, const uint8_t& eventType, con
 				if( connections < 5 ){
 					this->CentralReq(gattId, address, 0, 0);
 				} // if connections
-				SetConnection( false );
-			} // if connToBLE
+				// for the disconnect experiment, keep connecting
+				SetConnection( true );
+			} // if GetConnection()
 
-			CheckRS485();
+			//CheckRS485();
 
 		} /* if rssi */
 	} /* if !data.empty */
@@ -244,11 +245,6 @@ void GattClient::ConnectInd(const uint32_t& gattId, const uint32_t& btConnId, co
 		char numConn[ 4 ];
 		sprintf( numConn, "%d", connections );
 		std::string numConnections( numConn );
-		/*
-		PrintTime();
-		std::cout << "        Now connected to " << numConnections  << " devices" << std::endl;
-		*/
-		
 		this->DiscoverAllPrimaryServicesReq(gattId, btConnId);
 	}
 	else
@@ -343,7 +339,8 @@ void GattClient::DiscoverCharacInd(const uint32_t& gattId, const uint32_t& btCon
 		for( int i = 0; i < 16; i++ ){
 			message.push_back( 0x00 );
 		} // for
-		this->WriteReq( gattId, btConnId, gumsticks.find( btConnId )->second, 0,  message ) ;
+		// for the disconnect experiment, let's not try to connect
+		//this->WriteReq( gattId, btConnId, gumsticks.find( btConnId )->second, 0,  message ) ;
 	}
 	//std::cout << "(0x" << std::hex << (uint16_t) property << std::dec << ")" << std::endl;
 
