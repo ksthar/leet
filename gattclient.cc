@@ -24,7 +24,7 @@ std::string targetUUID = "4c23efb61bc83590064e0100cd67f5cb";
 
 // this handle is used for reading a characteristic
 uint16_t myHandle;
-int8_t threshold = -80;
+int8_t threshold = -50;
 uint8_t connections = 0;
 
 // setup my characteristic maps
