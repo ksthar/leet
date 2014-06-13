@@ -162,10 +162,11 @@ void GattClient::ReportInd(const uint32_t& gattId, const uint8_t& eventType, con
 			if( GetConnection() ) {
 				// only connect if we have less than five existing connections
 				if( connections < 5 ){
-					this->CentralReq(gattId, address, 0, 0);
+					// Choose address to connect to
+					if( "ff:fb:e2:ab:58:65|random" == address ){
+						this->CentralReq(gattId, address, 0, 0);
+					}
 				} // if connections
-				// for the disconnect experiment, keep connecting
-				SetConnection( true );
 			} // if GetConnection()
 
 			//CheckRS485();
@@ -257,6 +258,9 @@ void GattClient::DisconnectInd(const uint32_t& gattId, const uint32_t& btConnId,
 	std::cout << "\033[32m" << btConnId << "\033[37m"; 
 	std::cout << ": Disconnected from " << address << " (" << btConnId << ")" << std::endl;
 	//this->ScanReqStop( gattId );
+
+	// Now, allow leet to make another connection
+	SetConnection( true );
 }
 
 void GattClient::DiscoverCharacInd(const uint32_t& gattId, const uint32_t& btConnId, const uint16_t& declarationHandle, const uint8_t& property, const std::vector< uint8_t >& uuid, const uint16_t& valueHandle) {
@@ -299,12 +303,14 @@ void GattClient::DiscoverCharacInd(const uint32_t& gattId, const uint32_t& btCon
 		std::cout << " od: " << operands.find( btConnId )->second << " r: " << results.find( btConnId )->second << " "; 
 		*/
 
+		/*
 		std::vector< uint8_t > message;
 		// loading ASCII decimal values for '0x0000000000000000'
 		for( int i = 0; i < 16; i++ ){
 			message.push_back( 0x00 );
 		} // for
 		this->WriteReq( gattId, btConnId, passcodes.find( btConnId )->second, 0,  message ) ;
+		*/
 
 	} else if( currentUUID.find( opcodeChar ) != -1 ) {
 		opcodes.insert( opcodes_t::value_type( btConnId, valueHandle ));
