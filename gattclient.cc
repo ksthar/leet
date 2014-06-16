@@ -19,9 +19,12 @@ const uint8_t GattClient::client_characteristic_configuration_uuid[16] = {0x00, 
 const uint8_t GattClient::health_thermometer_uuid[16] = {0x00, 0x00, 0x18, 0x09, 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb};
 const uint8_t GattClient::temperature_measurement_uuid[16] = {0x00, 0x00, 0x2a, 0x1c, 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb};
 
-// the UUID I want to talk to and the one I'm currently seeing...
+// the UUID I want to talk to...
 std::string targetUUID = "4c23efb61bc83590064e0100cd67f5cb";
 
+// the address of the device I want to talk to 
+std::string targetAddr = "ff:fb:e2:ab:58:65|random";
+ 
 // this handle is used for reading a characteristic
 uint16_t myHandle;
 int8_t threshold = -80;
@@ -151,19 +154,20 @@ void GattClient::ReportInd(const uint32_t& gattId, const uint8_t& eventType, con
 
 		// Putting in a hard-coded RSSI level for debug purposes....
 		if( rssi > threshold ){
-			PrintTime();
+			//PrintTime();
 
 			// jump through hoops to print out the rssi threshold
 			char thresh[ 4 ];
 			sprintf( thresh, "%d", threshold );
 			std::string rssiMin( thresh );
 
-			std::cout << "\033[035m  " << gattId << "\033[037m" << " Found " << address << " " <<  rssi << " < " << rssiMin << std::endl;
+			//std::cout << "\033[035m  " << gattId << "\033[037m" << " Found " << address << " " <<  rssi << " < " << rssiMin << std::endl;
 			if( GetConnection() ) {
 				// only connect if we have less than five existing connections
 				if( connections < 5 ){
 					// Choose address to connect to
-					if( "ff:fb:e2:ab:58:65|random" == address ){
+					if( targetAddr == address ){
+						SetConnection( false );
 						this->CentralReq(gattId, address, 0, 0);
 					}
 				} // if connections
@@ -339,26 +343,18 @@ void GattClient::DiscoverCharacInd(const uint32_t& gattId, const uint32_t& btCon
 		/*
 		std::cout << "p: " << passcodes.find( btConnId )->second  << " oc: " << opcodes.find( btConnId )->second; 
 		std::cout << " od: " << operands.find( btConnId )->second << " r: " << results.find( btConnId )->second << " "; 
-		*/
+		
 		std::vector< uint8_t > message;
 		// loading ASCII decimal values for '0x0000000000000000'
 		for( int i = 0; i < 16; i++ ){
 			message.push_back( 0x00 );
 		} // for
+		*/
 		// for the disconnect experiment, let's not try to connect
 		//this->WriteReq( gattId, btConnId, gumsticks.find( btConnId )->second, 0,  message ) ;
 	}
 	//std::cout << "(0x" << std::hex << (uint16_t) property << std::dec << ")" << std::endl;
 
-	// Again with the special cases...
-	/*
-	if (std::equal(temperature_measurement_uuid, temperature_measurement_uuid+16, uuid.begin())) {
-		printf(" Temperature Measurement characteristic found.\n");
-		this->health_thermometer_service[btConnId].temperature_measurement_characteristic.value_handle = valueHandle;
-		this->health_thermometer_service[btConnId].temperature_measurement_characteristic.property = property;
-		this->CancelReq(gattId, btConnId);
-	}
-	*/
 }
 	
 void GattClient::DiscoverCharacCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint32_t& btConnId) {
