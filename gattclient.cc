@@ -23,12 +23,24 @@ const uint8_t GattClient::temperature_measurement_uuid[16] = {0x00, 0x00, 0x2a, 
 std::string targetUUID = "4c23efb61bc83590064e0100cd67f5cb";
 
 // the address of the device I want to talk to 
-std::string targetAddr[5] = { "00:07:80:67:75:41|public", "00:07:80:68:05:ea|public","00:07:80:68:05:e8|public", "00:07:80:68:05:b5|public","00:07:80:68:05:eb|public"}; //ff:fb:e2:ab:58:65|random";
+std::string targetAddr[8] = { 
+	"00:07:80:68:05:d3|public", 
+	"00:07:80:68:05:ef|public", 
+	"00:07:80:68:05:f1|public", 
+	"00:07:80:67:75:41|public", 
+	"00:07:80:68:05:ea|public",
+	"00:07:80:68:05:e8|public", 
+	"00:07:80:68:05:b5|public",
+	"00:07:80:68:05:eb|public"
+}; 
+
+//ff:fb:e2:ab:58:65|random";
  
 // this handle is used for reading a characteristic
 uint16_t myHandle;
 int8_t threshold = -120;
-uint8_t connections = 0;
+uint16_t connections = 0;
+uint16_t maxConnections = 8;
 
 // setup my characteristic maps
 passcodes_t passcodes;
@@ -109,7 +121,7 @@ void GattClient::ReportInd(const uint32_t& gattId, const uint8_t& eventType, con
 			//std::cout << "\033[035m  " << gattId << "\033[037m" << " Found " << address << " " <<  rssi << " < " << rssiMin << std::endl;
 			if( GetConnection() ) {
 				// only connect if we have less than five existing connections
-				if( connections < 5 ){
+				if( connections < maxConnections ){
 					// Verify its an address we want to connect to
 					for( i = 0; i < 5; i++ ){
 						if( targetAddr[i] == address ){
@@ -120,7 +132,6 @@ void GattClient::ReportInd(const uint32_t& gattId, const uint8_t& eventType, con
 					} // for i
 				}// if connections < 5
 			} // if GetConnection()
-
 
 		} /* if rssi */
 	} /* if !data.empty */
@@ -198,8 +209,10 @@ void GattClient::ConnectInd(const uint32_t& gattId, const uint32_t& btConnId, co
 void GattClient::DisconnectInd(const uint32_t& gattId, const uint32_t& btConnId, const uint16_t& reasonCode, const uint16_t& reasonSupplier, const std::string& address, const uint32_t& connInfo) {
 	PrintTime();
 	--connections;
+	char myConnections[ 4 ];
+	sprintf( myConnections, "%d", connections );
 	std::cout << "\033[32m" << btConnId << "\033[37m"; 
-	std::cout << ": Disconnected from " << address << " (" << btConnId << ")" << std::endl;
+	std::cout << " [" << myConnections << "] Disconnected from " << address << " (" << btConnId << ")" << std::endl;
 	//this->ScanReqStop( gattId );
 
 	// Now, allow leet to make another connection
@@ -208,9 +221,8 @@ void GattClient::DisconnectInd(const uint32_t& gattId, const uint32_t& btConnId,
 
 void GattClient::DiscoverCharacInd(const uint32_t& gattId, const uint32_t& btConnId, const uint16_t& declarationHandle, const uint8_t& property, const std::vector< uint8_t >& uuid, const uint16_t& valueHandle) {
 
+	
 	/*
-	PrintTime();
-	std::cout << "\033[32m" << btConnId << "\033[37m"; 
 	std::cout << ": Characteristic with dec " << declarationHandle << ", val " << valueHandle << ", and UUID: ";
 	*/
 
@@ -289,10 +301,12 @@ void GattClient::DiscoverCharacInd(const uint32_t& gattId, const uint32_t& btCon
 		for( int i = 0; i < 16; i++ ){
 			message.push_back( 0x00 );
 		} // for
+		PrintTime();
+		std::cout << "\033[32m" << btConnId << "\033[37m"; 
+		std::cout << " Characteristic Flags (0x" << std::hex << (uint16_t) property << std::dec << ")" << std::endl;
 		// for the disconnect experiment, let's not try to connect
 		this->WriteReq( gattId, btConnId, gumsticks.find( btConnId )->second, 0,  message ) ;
 	}
-	//std::cout << "(0x" << std::hex << (uint16_t) property << std::dec << ")" << std::endl;
 
 }
 	
@@ -371,22 +385,30 @@ void  GattClient::WriteCfm(const uint32_t& gattId, const uint16_t& resultCode, c
 		//this->DisconnectReq(gattId, btConnId);
 	}
 	else {
-		std::cout << btConnId << ": -> Write successful " << std::endl;
+		std::cout << btConnId << " -> Write successful " << std::endl;
 		// HAR NOTE: added this here to read after a successful write...myHandle is a global
 		// don't try to read if we don't have a handle for the result characteristic yet
-		if( results.find( btConnId )->second != 0 )
+		if( results.find( btConnId )->second == 0 ) {
 			this->ReadReq( gattId, btConnId, results.find( btConnId )->second, 0 );
+		} else {
+			PrintTime();
+			std::cout << btConnId << "\033[031m" << " -> Write failed! ";
+			std::cout << "(" << resultCode << ", " << resultSupplier << ")" << "\033[037m" << std::endl;
+			this->DisconnectReq(gattId, btConnId);
+		}
 	}
 }
 
 void  GattClient::ReadCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint32_t& btConnId, const std::vector< uint8_t >& value ) {
 	PrintTime();
 	if (resultCode != BT_GATT_RESULT_SUCCESS) {
-		std::cout << btConnId << ":   Reading client characteristic failed: " << resultCode << ", " << resultSupplier << std::endl;
-		//this->DisconnectReq(gattId, btConnId);
+		PrintTime();
+		std::cout << btConnId << "\033[031m" << " <- Read failed! ";
+		std::cout << "(" << resultCode << ", " << resultSupplier << ")" << "\033[037m" << std::endl;
+		this->DisconnectReq(gattId, btConnId);
 	}
 	else {
-		std::cout << btConnId << ": <- Read successful; Data: ";
+		std::cout << btConnId << " <- Read successful; Data: ";
 		for (std::vector< uint8_t >::const_iterator i=value.begin(); i != value.end(); i++) {
 			printf("%.2x", *i);
 			sprintf( replyToRSI, "%.2x", *i );
