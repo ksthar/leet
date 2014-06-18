@@ -29,6 +29,9 @@ typedef std::map< uint16_t, uint16_t, std::less< uint16_t > > operands_t;
 typedef std::map< uint16_t, uint16_t, std::less< uint16_t > > results_t;
 typedef std::map< uint16_t, uint16_t, std::less< uint16_t > > gumstick_t;
 
+// map of target addresses and how many times they have been connected to
+typedef std::map< std::string, uint16_t, std::less< std::string > > targets_t;
+
 class GattClient: public gatt_proxy, public DBus::IntrospectableProxy, public DBus::ObjectProxy 
 {
    public:
@@ -46,6 +49,7 @@ class GattClient: public gatt_proxy, public DBus::IntrospectableProxy, public DB
 			return this->isRegistered();
 		}
 
+		void InitTargets();
 		virtual void ScanCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier);
 		virtual void RegisterCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint16_t& context);
 		virtual void UnregisterCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier);

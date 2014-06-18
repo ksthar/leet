@@ -48,6 +48,7 @@ int main() {
 		return 2;
 
 	std::cout << "Receiving results...\n";
+	gc.InitTargets();
 	dispatcher.enter(); // leaving this when SIGINT arrives
 	if (!gc.isRegistered()) 
 		return 3;
