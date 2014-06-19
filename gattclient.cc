@@ -54,8 +54,12 @@ bool connToBLE = true;
 void SetConnection( bool setConn ){ connToBLE = setConn; }
 bool GetConnection(){ return connToBLE; }
 
+// Timer globals
+clock_t startTime = 0;
+
 
 void GattClient::PrintTime() {
+	/*
 	// Print a time stamp
 	time_t rawtime;
 	struct tm *timeinfo;
@@ -67,6 +71,14 @@ void GattClient::PrintTime() {
 	n = sprintf( reportTime, "[ %02d:%02d:%02d ]  ", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec );
 	printf( "%s", reportTime );
 	//std::cout << "[ " << timeinfo->tm_hour << ":" << timeinfo->tm_min << ":" << timeinfo->tm_sec << " ]  "; // << std::endl;
+	*/
+
+	char reportTime [13];
+	clock_t timer;
+	if( startTime == 0 ) startTime = clock();
+	timer = clock() - startTime;
+	sprintf( reportTime, "[ %3.03f sec ]", ((float)timer)/CLOCKS_PER_SEC );
+	std::cout << reportTime << " ";
 }
 
 void GattClient::InitTargets() {
