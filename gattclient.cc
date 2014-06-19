@@ -55,7 +55,7 @@ void SetConnection( bool setConn ){ connToBLE = setConn; }
 bool GetConnection(){ return connToBLE; }
 
 
-void PrintTime() {
+void GattClient::PrintTime() {
 	// Print a time stamp
 	time_t rawtime;
 	struct tm *timeinfo;
@@ -81,7 +81,8 @@ void GattClient::InitTargets() {
 
 void GattClient::ScanCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier) {
 	if (resultCode != 0) {
-		std::cerr << "Scan start/stop failed. Error code " << resultCode << ", supplier " << resultSupplier << std::endl;
+		PrintTime();
+		std::cerr << " Scan start/stop failed. Error code " << resultCode << ", supplier " << resultSupplier << std::endl;
 		this->UnregisterReq(this->getGattId());
 	}
 	else {
@@ -430,7 +431,12 @@ void  GattClient::ReadCfm(const uint32_t& gattId, const uint16_t& resultCode, co
 }
 
 void GattClient::ParamScanCfm( const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier ){
-
+	PrintTime();
+	if( resultCode != BT_GATT_RESULT_SUCCESS ) {
+		std::cout << "Error setting scan window and interval: (" << resultCode << ", " << resultSupplier << ")" << std::endl;
+	} else {
+		std::cout << "Scan window and interval set." << std::endl;
+	} // if resultCode
 }
 
 void GattClient::NotificationInd(const uint32_t& gattId, const uint32_t& btConnId, const std::string& address, const uint16_t& valueHandle, const std::vector< uint8_t >& value, const uint32_t& connInfo) {

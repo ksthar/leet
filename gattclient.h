@@ -49,6 +49,7 @@ class GattClient: public gatt_proxy, public DBus::IntrospectableProxy, public DB
 			return this->isRegistered();
 		}
 
+		void PrintTime();
 		void InitTargets();
 		virtual void ScanCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier);
 		virtual void RegisterCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint16_t& context);

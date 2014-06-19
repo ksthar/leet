@@ -25,11 +25,14 @@ void sighandler(int sig) {
 // ==================================================================================================================
 int main() {
 
+	uint16_t	scanWindow = 10;
+	uint16_t	scanInterval = 20;
+
 	// catch ctrl-c to exit the dispatcher
 	signal(SIGINT, sighandler);
 
 	
-	std::cout << "\033[36m" << "--------------------------<  Initiate BLE Scan  >--------------------------" << "\033[37m" << std::endl;
+	std::cout << "\033[36m" << "--------------------------<   Connection Test   >--------------------------" << "\033[37m" << std::endl;
 	
 	// ==================================================================================================================
 	// SCAN BLE, ENUMERATE GATT, READ, & WRITE
@@ -43,11 +46,22 @@ int main() {
 	if (!gc.isRegistered())
 		return 1;
 
-	std::cout << "Starting scan... ";
+	// setup scan window and interval here; interval & window in 0.625us slots
+	//gc.ParamScanReq( gc.getGattId(), <scanInterval>, <scanWindow> );
+	//gc.ParamScanReq( gc.getGattId(), 240, 1360 ); // interval = 150ms out of 1 sec
+	gc.PrintTime();
+	std::cout << "Scan window   = " << ((scanWindow * 625) / 1000) << "ms " << std::endl;
+	gc.PrintTime();
+	std::cout << "Scan interval = " << ((scanInterval * 625)/1000) << "ms " << std::endl;
+	gc.ParamScanReq( gc.getGattId(), scanInterval, scanWindow ); 
+
+	gc.PrintTime();
+	std::cout << "\033[34m" << "Starting scan... " << "\033[37m" << std::endl;
 	if (!gc.startStopScan(true)) // start scanning
 		return 2;
 
-	std::cout << "Receiving results...\n";
+	gc.PrintTime();
+	std::cout << "Receiving results..." << std::endl;
 	gc.InitTargets();
 	dispatcher.enter(); // leaving this when SIGINT arrives
 	if (!gc.isRegistered()) 
@@ -57,11 +71,13 @@ int main() {
 	// ==================================================================================================================
 	// CLEAN UP BLE STUFF
 	// ==================================================================================================================
-	std::cout << "Stopping scan... ";
+	gc.PrintTime();
+	std::cout << "\033[34m" << "Stopping scan... " << "\033[37m" << std::endl;
 	if (!gc.startStopScan(false)) // stop scanning
 		return 4;
 
-	std::cout << "Unregistering and leaving app...\n";
+	gc.PrintTime();
+	std::cout << "Unregistering and leaving app..." << std::endl;
 	std::cout << "\033[36m" << "--------------------------<         BYE          >--------------------------" << "\033[37m" << std::endl;
 	gc.UnregisterReq(gc.getGattId());
 	dispatcher.enter();	 
