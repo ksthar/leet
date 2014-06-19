@@ -35,8 +35,10 @@ glue/gatt_proxy-glue.h: ${XMLDIR}/gatt.xml
         -DINC_ReadCfm \
         -DINC_WriteReq \
         -DINC_WriteCfm \
+        -DINC_ParamScanCfm \
         -DINC_NotificationInd \
         -DINC_CancelReq \
+        -DINC_ParamScanReq \
 	$< > /tmp/trimmedgatt.xml
 	dbusxx-xml2cpp /tmp/trimmedgatt.xml --proxy=$@
 	rm -f /tmp/trimmedgatt.xml

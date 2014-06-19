@@ -65,6 +65,7 @@ class GattClient: public gatt_proxy, public DBus::IntrospectableProxy, public DB
 		virtual void DiscoverCharacDescriptorsCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint32_t& btConnId);
 		virtual void NotificationInd(const uint32_t& gattId, const uint32_t& btConnId, const std::string& address, const uint16_t& valueHandle, const std::vector< uint8_t >& value, const uint32_t& connInfo);
 		virtual void WriteCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint32_t& btConnId);	
+		virtual void ParamScanCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier );	
 		virtual void ReadCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint32_t& btConnId, const std::vector< uint8_t >& value);	
 
 		inline uint32_t getGattId() const { return this->gid; }

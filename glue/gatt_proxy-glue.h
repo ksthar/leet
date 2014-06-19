@@ -36,6 +36,7 @@ public:
         connect_signal(gatt_proxy, DiscoverCharacDescriptorsCfm, _DiscoverCharacDescriptorsCfm_stub);
         connect_signal(gatt_proxy, ReadCfm, _ReadCfm_stub);
         connect_signal(gatt_proxy, WriteCfm, _WriteCfm_stub);
+        connect_signal(gatt_proxy, ParamScanCfm, _ParamScanCfm_stub);
         connect_signal(gatt_proxy, NotificationInd, _NotificationInd_stub);
         connect_signal(gatt_proxy, ReportInd, _ReportInd_stub);
     }
@@ -144,6 +145,18 @@ public:
         ::DBus::Message ret = invoke_method (call);
     }
 
+    void ParamScanReq(const uint32_t& gattId, const uint16_t& scanInterval, const uint16_t& scanWindow)
+    {
+        ::DBus::CallMessage call;
+        ::DBus::MessageIter wi = call.writer();
+
+        wi << gattId;
+        wi << scanInterval;
+        wi << scanWindow;
+        call.member("ParamScanReq");
+        ::DBus::Message ret = invoke_method (call);
+    }
+
     void DiscoverAllPrimaryServicesReq(const uint32_t& gattId, const uint32_t& btConnId)
     {
         ::DBus::CallMessage call;
@@ -221,6 +234,7 @@ public:
     virtual void DiscoverCharacDescriptorsCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint32_t& btConnId) = 0;
     virtual void ReadCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint32_t& btConnId, const std::vector< uint8_t >& value) = 0;
     virtual void WriteCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier, const uint32_t& btConnId) = 0;
+    virtual void ParamScanCfm(const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier) = 0;
     virtual void NotificationInd(const uint32_t& gattId, const uint32_t& btConnId, const std::string& address, const uint16_t& valueHandle, const std::vector< uint8_t >& value, const uint32_t& connInfo) = 0;
     virtual void ReportInd(const uint32_t& gattId, const uint8_t& eventType, const std::string& address, const std::string& permanentAddress, const std::vector< uint8_t >& data, const int16_t& rssi) = 0;
 
@@ -437,6 +451,18 @@ private:
         uint32_t btConnId;
         ri >> btConnId;
         WriteCfm(gattId, resultCode, resultSupplier, btConnId);
+    }
+    void _ParamScanCfm_stub(const ::DBus::SignalMessage &sig)
+    {
+        ::DBus::MessageIter ri = sig.reader();
+
+        uint32_t gattId;
+        ri >> gattId;
+        uint16_t resultCode;
+        ri >> resultCode;
+        uint16_t resultSupplier;
+        ri >> resultSupplier;
+        ParamScanCfm(gattId, resultCode, resultSupplier );
     }
     void _NotificationInd_stub(const ::DBus::SignalMessage &sig)
     {

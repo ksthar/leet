@@ -85,7 +85,7 @@ void GattClient::ScanCfm(const uint32_t& gattId, const uint16_t& resultCode, con
 		this->UnregisterReq(this->getGattId());
 	}
 	else {
-		std::cout << "ScanCfm passed." << std::endl;
+		//std::cout << "ScanCfm passed." << std::endl;
 		dispatcher.leave(false);
 	}
 }
@@ -125,6 +125,7 @@ void GattClient::ReportInd(const uint32_t& gattId, const uint8_t& eventType, con
 
 			//PrintTime();
 			//std::cout << "\033[035m  " << gattId << "\033[037m" << " Found " << address << " " <<  rssi << " < " << rssiMin << std::endl;
+
 			if( GetConnection() ) {
 				// only connect if we have less than five existing connections
 				if( connections < maxConnections ){
@@ -426,6 +427,10 @@ void  GattClient::ReadCfm(const uint32_t& gattId, const uint16_t& resultCode, co
 		// We successfully read, now let's disconnect
 		this->DisconnectReq(gattId, btConnId);
 	}
+}
+
+void GattClient::ParamScanCfm( const uint32_t& gattId, const uint16_t& resultCode, const uint16_t& resultSupplier ){
+
 }
 
 void GattClient::NotificationInd(const uint32_t& gattId, const uint32_t& btConnId, const std::string& address, const uint16_t& valueHandle, const std::vector< uint8_t >& value, const uint32_t& connInfo) {
